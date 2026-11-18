@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rolagem">
+<meta name="theme-color" content="#111111">
+<title>Rolagem</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#111; --panel:#1b1b1b; --line:#2a2a2a; --text:#f2f2f2; --muted:#9a9a9a;
+  --accent:#f5b83d; --danger:#ff6b6b;
+  --safe-t:env(safe-area-inset-top); --safe-b:env(safe-area-inset-bottom);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{overscroll-behavior:none}
+button,input,textarea{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+.hidden{display:none!important}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+header{display:flex;align-items:center;gap:8px;padding:calc(var(--safe-t) + 10px) 16px 10px;
+  border-bottom:1px solid var(--line);min-height:56px}
+header h1{font-size:20px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{min-width:40px;height:40px;border-radius:20px;display:grid;place-items:center;font-size:20px;color:var(--accent)}
+.icon-btn.text{padding:0 12px;font-size:16px;font-weight:600}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0 calc(var(--safe-b) + 90px)}
+
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.row .grow{flex:1;min-width:0}
+.row .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .sub{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .mini{color:var(--muted);font-size:18px;width:34px;height:34px;display:grid;place-items:center}
+.empty{color:var(--muted);text-align:center;padding:48px 24px}
+.section{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;padding:18px 16px 6px}
+
+.fab{position:fixed;right:20px;bottom:calc(var(--safe-b) + 20px);height:56px;padding:0 22px;border-radius:28px;
+  background:var(--accent);color:#111;font-weight:700;font-size:17px;box-shadow:0 6px 20px #0008}
+.bar{display:flex;gap:10px;padding:12px 16px}
+.btn{flex:1;height:46px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:600}
+.btn.primary{background:var(--accent);color:#111;border:0}
+.btn.danger{color:var(--danger)}
+
+input[type=search],input[type=text],textarea{width:100%;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:12px 14px;outline:none}
+textarea{min-height:45vh;resize:vertical;line-height:1.5}
+.field{padding:8px 16px}
+.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+.tabs{display:flex;margin:12px 16px;background:var(--panel);border-radius:12px;padding:4px}
+.tabs button{flex:1;height:36px;border-radius:9px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:var(--line);color:var(--text)}
+.preview{white-space:pre-wrap;padding:12px 16px;color:#ddd;line-height:1.6}
+
+/* ---------- player ---------- */
+#player{background:#000}
+#lyricsBox{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px}
+#lyrics{white-space:pre-wrap;line-height:1.55;padding:calc(var(--safe-t) + 70px) 0 70vh;font-weight:500}
+#lyrics .song-head{color:var(--muted);font-size:.6em;margin-bottom:1.2em;line-height:1.3}
+#topbar,#controls{position:fixed;left:0;right:0;background:linear-gradient(#000e,#000c);transition:opacity .25s}
+#topbar{top:0;display:flex;align-items:center;gap:6px;padding:calc(var(--safe-t) + 6px) 10px 6px}
+#topbar .t{flex:1;min-width:0;text-align:center;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#controls{bottom:0;padding:10px 16px calc(var(--safe-b) + 12px)}
+.faded #topbar,.faded #controls{opacity:0;pointer-events:none}
+.ctl-row{display:flex;align-items:center;gap:10px;margin:6px 0}
+.ctl-row .lbl{width:64px;color:var(--muted);font-size:13px}
+.ctl-row input[type=range]{flex:1;accent-color:var(--accent)}
+.ctl-row .val{width:34px;text-align:right;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.big-row{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.round{width:52px;height:52px;border-radius:26px;background:var(--panel);display:grid;place-items:center;font-size:20px}
+.round.play{width:72px;height:72px;border-radius:36px;background:var(--accent);color:#111;font-size:30px}
+.round:disabled{opacity:.3}
+.small-btn{font-size:13px;color:var(--accent);padding:6px 8px}
+#countdown{position:fixed;inset:0;display:grid;place-items:center;font-size:120px;font-weight:800;color:var(--accent);pointer-events:none}
+
+/* ---------- sheet ---------- */
+.sheet-bg{position:fixed;inset:0;background:#0009;display:flex;align-items:flex-end;z-index:50}
+.sheet{width:100%;background:var(--panel);border-radius:16px 16px 0 0;padding:8px 0 calc(var(--safe-b) + 12px);max-height:80vh;overflow-y:auto}
+.sheet .row{border-color:var(--line)}
+.sheet h3{margin:8px 16px 4px;font-size:15px;color:var(--muted);font-weight:600}
+.toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 90px);transform:translateX(-50%);background:#333;
+  padding:10px 16px;border-radius:20px;font-size:14px;z-index:60}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<section id="home" class="screen">
+  <header>
+    <h1>Rolagem</h1>
+    <button class="icon-btn text hidden" id="installBtn">Instalar</button>
+    <button class="icon-btn" id="homeMenu" aria-label="Mais">⋯</button>
+  </header>
+  <main id="homeList"></main>
+  <button class="fab" id="newPlaylist">+ Playlist</button>
+</section>
+
+<!-- PLAYLIST -->
+<section id="playlist" class="screen hidden">
+  <header>
+    <button class="icon-btn" data-back aria-label="Voltar">‹</button>
+    <h1 id="plTitle"></h1>
+    <button class="icon-btn" id="plMenu" aria-label="Mais">⋯</button>
+  </header>
+  <main id="plList"></main>
+  <button class="fab" id="addSong">+ Música</button>
+</section>
+
+<!-- ADD / EDIT SONG -->
+<section id="addScreen" class="screen hidden">
+  <header>
+    <button class="icon-btn" data-back aria-label="Voltar">‹</button>
+    <h1 id="addTitle">Adicionar música</h1>
+  </header>
+  <main>
+    <div class="tabs" id="addTabs">
+      <button data-tab="search" class="on">Buscar letra</button>
+      <button data-tab="paste">Colar letra</button>
+    </div>
+    <div id="tabSearch">
+      <div class="field"><input type="search" id="q" placeholder="Música e artista (ex: tempo perdido legião)" enterkeyhint="search" autocomplete="off"></div>
+      <div id="results"></div>
+    </div>
+    <div id="tabPaste" class="hidden">
+      <div class="field"><label>Música</label><input type="text" id="fTitle"></div>
+      <div class="field"><label>Artista</label><input type="text" id="fArtist"></div>
+      <div class="field"><label>Letra</label><textarea id="fLyrics" placeholder="Cole ou escreva a letra aqui"></textarea></div>
+      <div class="bar"><button class="btn primary" id="saveManual">Salvar</button></div>
+    </div>
+  </main>
+</section>
+
+<!-- PREVIEW SEARCH RESULT -->
+<section id="previewScreen" class="screen hidden">
+  <header>
+    <button class="icon-btn" data-back aria-label="Voltar">‹</button>
+    <h1 id="pvTitle"></h1>
+    <button class="icon-btn text" id="pvSave">Salvar</button>
+  </header>
+  <main><div class="preview" id="pvText"></div></main>
+</section>
+
+<!-- PLAYER -->
+<section id="player" class="screen hidden">
+  <div id="lyricsBox"><div id="lyrics"></div></div>
+  <div id="topbar">
+    <button class="icon-btn" id="closePlayer" aria-label="Fechar">✕</button>
+    <div class="t" id="plPos"></div>
+    <button class="icon-btn" id="editFromPlayer" aria-label="Editar">✎</button>
+  </div>
+  <div id="controls">
+    <div class="ctl-row"><span class="lbl">Velocidade</span><input type="range" id="speed" min="1" max="100" step="1"><span class="val" id="speedVal"></span></div>
+    <div class="ctl-row"><span class="lbl">Letra</span><input type="range" id="size" min="16" max="48" step="1"><span class="val" id="sizeVal"></span></div>
+    <div class="ctl-row" style="justify-content:space-between">
+      <button class="small-btn" id="fitDuration">Ajustar à duração</button>
+      <button class="small-btn" id="toTop">Voltar ao início</button>
+    </div>
+    <div class="big-row">
+      <button class="round" id="prevSong" aria-label="Anterior">⏮</button>
+      <button class="round play" id="playBtn" aria-label="Tocar">▶</button>
+      <button class="round" id="nextSong" aria-label="Próxima">⏭</button>
+    </div>
+  </div>
+  <div id="countdown" class="hidden"></div>
+</section>
+
+<input type="file" id="importFile" accept="application/json,.json" class="hidden">
+
+<script>
+/* ============================================================
+   Rolagem — letras em playlist com rolagem automática.
+   Tudo fica salvo no próprio aparelho (localStorage).
+   Letras: busca no LRCLIB (lrclib.net, aberto e gratuito) ou colar à mão.
+   ============================================================ */
+const KEY = 'rolagem.v1';
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let db = load();
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.songs && d.playlists) return d; }catch(e){}
+  return { songs:{}, playlists:[], prefs:{ size:26 } };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){ toast('Não consegui salvar 😕'); } }
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2200);
+}
+
+/* ---------- navigation ---------- */
+const stack = [];
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  $('#'+id).classList.remove('hidden');
+}
+function go(id, render){ stack.push({id, render}); render && render(); show(id); }
+function back(){
+  stack.pop();
+  const top = stack[stack.length-1] || {id:'home', render:renderHome};
+  top.render && top.render(); show(top.id);
+}
+document.querySelectorAll('[data-back]').forEach(b => b.onclick = back);
+
+/* ---------- action sheet ---------- */
+function sheet(title, items){
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet">${title?`<h3>${esc(title)}</h3>`:''}${items.map((it,i)=>
+    `<button class="row" data-i="${i}" style="width:100%;text-align:left;${it.danger?'color:var(--danger)':''}">${esc(it.label)}</button>`).join('')}
+    <button class="row" data-i="x" style="width:100%;text-align:left;color:var(--muted)">Cancelar</button></div>`;
+  bg.onclick = e => {
+    const b = e.target.closest('[data-i]'); if(e.target!==bg && !b) return;
+    bg.remove(); if(b && b.dataset.i!=='x') items[+b.dataset.i].run();
+  };
+  document.body.appendChild(bg);
+}
+
+/* ---------- HOME ---------- */
+let currentPl = null; // playlist id
+function renderHome(){
+  const el = $('#homeList');
+  if(!db.playlists.length){
+    el.innerHTML = `<div class="empty">Nenhuma playlist ainda.<br><br>Toque em <b>+ Playlist</b> para criar a primeira.</div>`;
+    return;
+  }
+  el.innerHTML = db.playlists.map(p => `
+    <div class="row" data-open="${p.id}">
+      <div class="grow"><div class="title">${esc(p.name)}</div>
+      <div class="sub">${p.songIds.length} ${p.songIds.length===1?'música':'músicas'}</div></div>
+      <span class="mini">›</span>
+    </div>`).join('');
+  el.querySelectorAll('[data-open]').forEach(r => r.onclick = () => openPlaylist(r.dataset.open));
+}
+$('#newPlaylist').onclick = () => {
+  const name = prompt('Nome da playlist'); if(!name || !name.trim()) return;
+  const p = { id:uid(), name:name.trim(), songIds:[] };
+  db.playlists.push(p); save(); openPlaylist(p.id);
+};
+$('#homeMenu').onclick = () => sheet('Backup', [
+  { label:'Exportar backup (arquivo)', run:exportBackup },
+  { label:'Importar backup', run:() => $('#importFile').click() },
+]);
+
+/* ---------- PLAYLIST ---------- */
+const pl = () => db.playlists.find(p => p.id === currentPl);
+function openPlaylist(id){ currentPl = id; go('playlist', renderPlaylist); }
+function renderPlaylist(){
+  const p = pl(); if(!p) return back();
+  $('#plTitle').textContent = p.name;
+  const el = $('#plList');
+  if(!p.songIds.length){
+    el.innerHTML = `<div class="empty">Playlist vazia.<br><br>Toque em <b>+ Música</b> para buscar uma letra.</div>`;
+    return;
+  }
+  el.innerHTML = p.songIds.map((sid,i) => { const s = db.songs[sid] || {};
+    return `<div class="row" data-play="${i}">
+      <div class="grow"><div class="title">${esc(s.title||'Sem título')}</div><div class="sub">${esc(s.artist||'')}</div></div>
+      <button class="mini" data-more="${i}" aria-label="Opções">⋯</button>
+    </div>`;}).join('');
+  el.querySelectorAll('[data-play]').forEach(r => r.onclick = e => {
+    if(e.target.closest('[data-more]')) return;
+    openPlayer(+r.dataset.play);
+  });
+  el.querySelectorAll('[data-more]').forEach(b => b.onclick = () => songMenu(+b.dataset.more));
+}
+function songMenu(i){
+  const p = pl(), sid = p.songIds[i], s = db.songs[sid];
+  sheet(s.title, [
+    { label:'Editar letra', run:() => openEditor(sid) },
+    { label:'Mover para cima', run:() => { if(i>0){ [p.songIds[i-1],p.songIds[i]]=[p.songIds[i],p.songIds[i-1]]; save(); renderPlaylist(); } } },
+    { label:'Mover para baixo', run:() => { if(i<p.songIds.length-1){ [p.songIds[i+1],p.songIds[i]]=[p.songIds[i],p.songIds[i+1]]; save(); renderPlaylist(); } } },
+    { label:'Remover da playlist', danger:true, run:() => { p.songIds.splice(i,1); gcSongs(); save(); renderPlaylist(); } },
+  ]);
+}
+$('#plMenu').onclick = () => { const p = pl(); sheet(p.name, [
+  { label:'Renomear', run:() => { const n = prompt('Novo nome', p.name); if(n && n.trim()){ p.name=n.trim(); save(); renderPlaylist(); } } },
+  { label:'Apagar playlist', danger:true, run:() => { if(confirm(`Apagar "${p.name}"?`)){ db.playlists = db.playlists.filter(x=>x!==p); gcSongs(); save(); back(); } } },
+]); };
+function gcSongs(){ // remove songs no playlist uses anymore
+  const used = new Set(db.playlists.flatMap(p => p.songIds));
+  Object.keys(db.songs).forEach(id => { if(!used.has(id)) delete db.songs[id]; });
+}
+
+/* ---------- ADD SONG ---------- */
+let editingId = null;
+$('#addSong').onclick = () => openEditor(null);
+function openEditor(sid){
+  editingId = sid;
+  go('addScreen', () => {});
+  const s = sid ? db.songs[sid] : null;
+  $('#addTitle').textContent = s ? 'Editar música' : 'Adicionar música';
+  $('#fTitle').value = s?.title || ''; $('#fArtist').value = s?.artist || ''; $('#fLyrics').value = s?.lyrics || '';
+  $('#q').value = ''; $('#results').innerHTML = '';
+  setTab(s ? 'paste' : 'search');
+  $('#addTabs').classList.toggle('hidden', !!s);
+}
+function setTab(t){
+  document.querySelectorAll('#addTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab===t));
+  $('#tabSearch').classList.toggle('hidden', t!=='search');
+  $('#tabPaste').classList.toggle('hidden', t!=='paste');
+  if(t==='search') setTimeout(()=>$('#q').focus(), 50);
+}
+document.querySelectorAll('#addTabs button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+let searchTimer, searchSeq = 0;
+$('#q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(doSearch, 450); });
+$('#q').addEventListener('keydown', e => { if(e.key==='Enter'){ clearTimeout(searchTimer); doSearch(); $('#q').blur(); } });
+async function doSearch(){
+  const q = $('#q').value.trim(), el = $('#results');
+  if(q.length < 2){ el.innerHTML=''; return; }
+  const seq = ++searchSeq;
+  el.innerHTML = `<div class="empty">Buscando…</div>`;
+  try{
+    const r = await fetch('https://lrclib.net/api/search?q=' + encodeURIComponent(q));
+    const data = (await r.json()).filter(x => x.plainLyrics && !x.instrumental);
+    if(seq !== searchSeq) return;
+    // collapse duplicates (same title + artist)
+    const seen = new Set(), list = [];
+    for(const x of data){ const k=(x.trackName+'|'+x.artistName).toLowerCase(); if(!seen.has(k)){ seen.add(k); list.push(x); } }
+    if(!list.length){ el.innerHTML = `<div class="empty">Nada encontrado.<br>Tente outro nome, ou use <b>Colar letra</b>.</div>`; return; }
+    el.innerHTML = list.slice(0,25).map((x,i) => `
+      <div class="row" data-r="${i}"><div class="grow">
+        <div class="title">${esc(x.trackName)}</div>
+        <div class="sub">${esc(x.artistName)}${x.albumName && x.albumName!==x.artistName?' · '+esc(x.albumName):''}</div>
+      </div><span class="mini">›</span></div>`).join('');
+    el.querySelectorAll('[data-r]').forEach(row => row.onclick = () => previewResult(list[+row.dataset.r]));
+  }catch(e){
+    if(seq === searchSeq) el.innerHTML = `<div class="empty">Sem conexão com a busca.<br>Use <b>Colar letra</b>.</div>`;
+  }
+}
+let pending = null;
+function previewResult(x){
+  pending = { title:x.trackName, artist:x.artistName, lyrics:x.plainLyrics.trim(), duration:Math.round(x.duration||0) };
+  $('#pvTitle').textContent = x.trackName;
+  $('#pvText').textContent = pending.lyrics;
+  go('previewScreen');
+  $('#previewScreen main').scrollTop = 0;
+}
+$('#pvSave').onclick = () => { addSong(pending); stack.pop(); back(); };
+$('#saveManual').onclick = () => {
+  const title = $('#fTitle').value.trim(), lyrics = $('#fLyrics').value.replace(/\s+$/,'');
+  if(!title || !lyrics.trim()){ toast('Preencha o nome e a letra'); return; }
+  if(editingId){
+    Object.assign(db.songs[editingId], { title, artist:$('#fArtist').value.trim(), lyrics });
+    save(); toast('Salvo'); back();
+  } else { addSong({ title, artist:$('#fArtist').value.trim(), lyrics, duration:0 }); back(); }
+};
+function addSong(s){
+  const id = uid();
+  db.songs[id] = { id, ...s, speed:null };
+  pl().songIds.push(id); save(); toast('Adicionada ✓');
+}
+
+/* ---------- PLAYER ---------- */
+// speed slider 1..100 maps to px/second, gentle curve so slow speeds have fine control
+const sliderToPx = v => 4 + Math.pow(v/100, 1.6) * 140;
+const pxToSlider = px => Math.max(1, Math.min(100, Math.round(100 * Math.pow(Math.max(0,(px-4))/140, 1/1.6))));
+let idx = 0, playing = false, pos = 0, lastT = 0, raf = 0, wake = null, fadeTimer = 0, userTouching = false;
+const box = $('#lyricsBox');
+
+function curSong(){ return db.songs[pl().songIds[idx]]; }
+function openPlayer(i){ idx = i; go('player', loadSong); }
+function loadSong(){
+  stop();
+  const s = curSong(), p = pl();
+  $('#lyrics').innerHTML = `<div class="song-head"><b>${esc(s.title)}</b><br>${esc(s.artist||'')}</div>${esc(s.lyrics)}`;
+  applySize();
+  $('#plPos').textContent = `${p.name} · ${idx+1}/${p.songIds.length}`;
+  $('#prevSong').disabled = idx===0; $('#nextSong').disabled = idx===p.songIds.length-1;
+  $('#fitDuration').classList.toggle('hidden', !s.duration);
+  box.scrollTop = 0; pos = 0;
+  requestAnimationFrame(() => { if(s.speed == null){ s.speed = guessSpeed(s); save(); } syncSpeedUI(); });
+  showControls(true);
+}
+function scrollable(){ return Math.max(1, box.scrollHeight - box.clientHeight - window.innerHeight*0.55); }
+function guessSpeed(s){ return s.duration ? fitSpeed(s) : 18; }
+function fitSpeed(s){ return Math.max(4, Math.min(144, scrollable() / Math.max(30, s.duration - 12))); }
+function syncSpeedUI(){ const v = pxToSlider(curSong().speed); $('#speed').value = v; $('#speedVal').textContent = v; }
+$('#speed').oninput = e => { const s = curSong(); s.speed = sliderToPx(+e.target.value); $('#speedVal').textContent = e.target.value; save(); };
+$('#fitDuration').onclick = () => { const s = curSong(); s.speed = fitSpeed(s); syncSpeedUI(); save();
+  toast(`Ajustado para ${Math.floor(s.duration/60)}:${String(s.duration%60).padStart(2,'0')}`); };
+
+function applySize(){ const v = db.prefs.size || 26; $('#lyrics').style.fontSize = v+'px'; $('#size').value = v; $('#sizeVal').textContent = v; }
+$('#size').oninput = e => { db.prefs.size = +e.target.value; applySize(); save(); };
+
+function tick(t){
+  if(!playing) return;
+  const dt = Math.min(0.1, (t - lastT)/1000); lastT = t;
+  if(!userTouching){
+    pos += curSong().speed * dt;
+    box.scrollTop = pos;
+    if(box.scrollTop + box.clientHeight >= box.scrollHeight - 2){ stop(); showControls(true); return; }
+  }
+  raf = requestAnimationFrame(tick);
+}
+async function start(){
+  playing = true; $('#playBtn').textContent = '❚❚';
+  pos = box.scrollTop; lastT = performance.now(); raf = requestAnimationFrame(tick);
+  try{ if('wakeLock' in navigator) wake = await navigator.wakeLock.request('screen'); }catch(e){}
+  fadeSoon();
+}
+function stop(){
+  playing = false; cancelAnimationFrame(raf); $('#playBtn').textContent = '▶';
+  if(wake){ wake.release().catch(()=>{}); wake = null; }
+}
+function startWithCountdown(){
+  const cd = $('#countdown'); let n = 3; cd.textContent = n; cd.classList.remove('hidden');
+  showControls(false);
+  const iv = setInterval(() => { n--; if(n<=0){ clearInterval(iv); cd.classList.add('hidden'); start(); } else cd.textContent = n; }, 700);
+}
+$('#playBtn').onclick = e => { e.stopPropagation(); playing ? (stop(), showControls(true)) : (box.scrollTop < 5 ? startWithCountdown() : start()); };
+$('#prevSong').onclick = () => { if(idx>0){ idx--; loadSong(); } };
+$('#nextSong').onclick = () => { if(idx < pl().songIds.length-1){ idx++; loadSong(); } };
+$('#toTop').onclick = () => { stop(); box.scrollTop = 0; pos = 0; };
+$('#closePlayer').onclick = () => { stop(); back(); };
+$('#editFromPlayer').onclick = () => { stop(); const sid = pl().songIds[idx]; openEditor(sid); };
+
+// controls fade while playing; tap the lyrics to toggle them
+function showControls(stay){ $('#player').classList.remove('faded'); clearTimeout(fadeTimer); if(!stay && playing) fadeSoon(); }
+function fadeSoon(){ clearTimeout(fadeTimer); fadeTimer = setTimeout(() => { if(playing) $('#player').classList.add('faded'); }, 2500); }
+box.addEventListener('click', () => {
+  if($('#player').classList.contains('faded')) showControls();
+  else if(playing) $('#player').classList.add('faded');
+});
+// let him drag the lyrics by hand mid-song; the scroll picks up from where he left it
+box.addEventListener('touchstart', () => { userTouching = true; }, {passive:true});
+box.addEventListener('touchend', () => { setTimeout(() => { userTouching = false; pos = box.scrollTop; lastT = performance.now(); }, 400); }, {passive:true});
+document.addEventListener('visibilitychange', async () => {
+  if(document.visibilityState==='visible' && playing && !wake){ try{ wake = await navigator.wakeLock.request('screen'); }catch(e){} }
+  if(document.visibilityState==='visible') lastT = performance.now();
+});
+
+/* ---------- backup ---------- */
+async function exportBackup(){
+  const blob = new Blob([JSON.stringify(db, null, 1)], {type:'application/json'});
+  const name = `rolagem-backup-${new Date().toISOString().slice(0,10)}.json`;
+  const file = new File([blob], name, {type:'application/json'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file]}); return; }catch(e){ if(e.name==='AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+}
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!d.songs || !d.playlists) throw 0;
+    if(confirm(`Importar ${d.playlists.length} playlists? Isso substitui o que está no aparelho.`)){ db = d; save(); renderHome(); toast('Backup importado'); }
+  }catch(err){ toast('Arquivo inválido'); }
+  e.target.value = '';
+};
+
+/* ---------- install button ---------- */
+// Chrome/Edge (Windows, Mac, Android) hand us a real install prompt; iPhone has none,
+// so there the button shows the three taps instead.
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#installBtn').classList.remove('hidden'); });
+window.addEventListener('appinstalled', () => { $('#installBtn').classList.add('hidden'); toast('Instalado ✓'); });
+if(isIOS && !standalone) $('#installBtn').classList.remove('hidden');
+$('#installBtn').onclick = async () => {
+  if(installEvt){ installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('#installBtn').classList.add('hidden'); return; }
+  const inApp = isIOS && !/Safari/.test(navigator.userAgent) || /CriOS|FxiOS/.test(navigator.userAgent);
+  sheet(inApp ? 'Abra este link no Safari e depois:' : 'Para instalar no iPhone:', [
+    { label:'1. Toque em Compartilhar (quadrado com a seta ↑)', run:()=>{} },
+    { label:'2. Role e toque em "Adicionar à Tela de Início"', run:()=>{} },
+    { label:'3. Toque em "Adicionar" — pronto, vira um app', run:()=>{} },
+  ]);
+};
+
+/* ---------- offline ---------- */
+if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+renderHome();
+</script>
+</body>
+</html>
